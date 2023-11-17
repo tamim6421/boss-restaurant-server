@@ -155,6 +155,61 @@ app.get('/menu', async(req, res) =>{
   }
 })
 
+// post data to ta add data form 
+app.post('/menu', verifyToken, verifyAdmin, async(req, res) =>{
+  const item = req.body 
+  // if (item._id) {
+  //   delete item._id; // Remove the _id field if it's present
+  // }
+  const result = await menuCollection.insertOne(item)
+  res.send(result)
+})
+
+
+// get a specific menu items
+app.get('/menu/:id', async(req, res) =>{
+  try {
+  const id = req.params.id 
+  const query = {_id: new ObjectId(id)}
+  const result = await menuCollection.findOne(query)
+  res.send(result)
+    
+  } catch (error) {
+    console.log(error)
+  }
+})
+
+// update menu items 
+app.patch('/menu/:id', async(req, res) =>{
+  const item = req.body 
+  const id = req.params.id 
+  const filter = {_id: new ObjectId(id)}
+  const updatedDoc = {
+    $set:{
+      name: item.name,
+      category: item.category,
+      price: item.price,
+      recipe: item.recipe,
+      image: item.image
+    }
+  }
+  const result = await menuCollection.updateOne(filter, updatedDoc)
+  res.send(result)
+} )
+
+// delete menu items 
+app.delete('/menu/:id',verifyToken, verifyAdmin, async(req, res) =>{
+  try {
+    const id = req.params.id
+  const query = {_id: new ObjectId(id)}
+  const result = await menuCollection.deleteOne(query)
+  res.send(result)
+    
+  } catch (error) {
+      console.log(error)
+  }
+})
+
 
 // get all review
 app.get('/review', async(req, res) =>{
