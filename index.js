@@ -3,6 +3,7 @@ const cors = require('cors')
 require('dotenv').config()
 const app = express()
 const jwt = require('jsonwebtoken');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000 
 
 // middleware 
@@ -27,6 +28,7 @@ const usersCollection = client.db("bossDb").collection('users')
 const menuCollection = client.db("bossDb").collection('menu')
 const reviewCollection = client.db("bossDb").collection('reviews')
 const cartCollection = client.db("bossDb").collection('carts')
+const paymentCollection = client.db("bossDb").collection('payments')
 
 
 
@@ -257,6 +259,56 @@ app.delete('/carts/:id', async(req, res) =>{
   } catch (error) {
     console.log(error)
   }
+})
+
+// payment related api 
+// payment intent 
+app.post('/create-payment-intent', async(req, res) =>{
+  const {price} = req.body 
+  const amount = parseInt(price * 100)
+  console.log(amount, ' amount in te intent')
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount,
+    
+    currency: "usd",
+    payment_method_types: [
+      "card"
+    ],
+  })
+
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
+
+})
+
+
+// payment history data 
+app.post('/payments', async(req, res) =>{
+  const payment = req.body 
+  const paymentResult = await paymentCollection.insertOne(payment)
+
+
+  // delete each items from the carts
+ 
+  
+  const query = {_id: {
+    $in: payment.cartIds.map(id => new ObjectId(id))
+  }}
+
+  const deleteResult = await cartCollection.deleteMany(query)
+  res.send({paymentResult, deleteResult})
+  
+})
+
+// get payment information 
+app.get('/payments/:email', verifyToken, async(req, res) =>{
+  const query = {email: req.params.email}
+  if(req.params.email !== req.decoded.email){
+    return res.status(403).send({message: 'forbidden access'})
+  }
+  const result = await paymentCollection.find(query).toArray()
+  res.send(result)
 })
 
 async function run() {
